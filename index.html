@@ -19,15 +19,23 @@
 
     #chat-helper {
         font-size: 12px;
-        color: #;
+    }
+
+    .timestamp {
+        font-size: 11px;
+        color: #e8e8e8;
+    }
+
+    .username, .content {
+        display: inline;
     }
 </style>
 
 <body>
     <div class="container">
         <div class="row">
-            <div class="col-md-4"></div>
-            <div class="col-md-4">
+            <div class="col-md-2"></div>
+            <div class="col-md-8">
                 <div id="username">
                     <h4 style="">Redis and NodeJS real-time chat</h4>
                     <br/>
@@ -46,18 +54,45 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4"></div>
+            <div class="col-md-2"></div>
         </div> <!-- .row -->
     </div> <!-- .container -->
 
 <script>    
     $(document).ready(function() {
+        var socket = io();
+        var content = $('#content');
+ 
         var username = "anonymous";
+        
+        socket.on('connect', function() {
+            console.log("Connected");
+        });
+ 
+        socket.on('message', function(message) {
+            message = JSON.parse(message)
+            
+            if (message.content != "joined the chat") {
+                content.append("<div class='username'>"+message.username + ": </div><div class='content'>" + message.content + "</div><div class='timestamp'>" + message.timestamp + "</div>");
+            } else {
+                content.append("<div class='username'>"+message.username + " </div><div class='content'>" + message.content + "</div><div class='timestamp'>" + message.timestamp + "</div>");
+            }
+            //add disconnect message
+        });
+ 
+        socket.on('disconnect', function() {
+            console.log('Disconnected');
+            content.append("<b>Disconnected!</b>");
+        });
+
+        
         $('#enter-chat').click(function(){
             if($('input[name=usernameTxt]').val() != ""){
                 username = $('input[name=usernameTxt]').val();
-                var msg = {type:'setUsername',user:username};
-                socket.json.send(msg);
+                var user = {
+                    username: username
+                }
+                socket.emit("join", user);
             }
             $('#username').slideUp("slow",function(){
                 $('#chat').slideDown("slow");
@@ -73,26 +108,14 @@
             });
         });
 
-        var socket = io();
-        var content = $('#content');
- 
-        socket.on('connect', function() {
-            console.log("Connected");
-        });
- 
-        socket.on('message', function(message){
-            content.append(message + '<br />');
-        }) ;
- 
-        socket.on('disconnect', function() {
-            console.log('disconnected');
-            content.append("<b>Disconnected!</b>");
-        });
-
         $('#chat-input').keydown(function(event) {
             if (event.keyCode == 13) {
-                var msg = { type:'chat', message:username + ": " +  $("#chat-input").val() }
-                socket.json.send(msg);
+                var message = { 
+                    type:'chat', 
+                    username: username,
+                    content: $("#chat-input").val() 
+                }
+                socket.json.send(message);
                 $("#chat-input").val("");
                 return false;
              }
